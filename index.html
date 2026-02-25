@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carte Mémoire · Système PAO</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --card-bg: #1c1c22;
+    --accent: #e8c547;
+    --accent2: #e05c5c;
+    --spade: #a8c5da;
+    --heart: #e05c5c;
+    --club: #7ec8a4;
+    --diamond: #e8c547;
+    --text: #f0ece0;
+    --muted: #7a7870;
+    --border: #2a2a32;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grain */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 3rem 2rem 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+
+  header p {
+    margin-top: 0.5rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .suits-legend {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+  }
+
+  .suits-legend span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  /* Controls */
+  .controls {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .filter-btn {
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232, 197, 71, 0.08);
+  }
+
+  .filter-btn[data-suit="♠"].active { border-color: var(--spade); color: var(--spade); background: rgba(168,197,218,0.08); }
+  .filter-btn[data-suit="♥"].active { border-color: var(--heart); color: var(--heart); background: rgba(224,92,92,0.08); }
+  .filter-btn[data-suit="♣"].active { border-color: var(--club); color: var(--club); background: rgba(126,200,164,0.08); }
+  .filter-btn[data-suit="♦"].active { border-color: var(--diamond); color: var(--diamond); background: rgba(232,197,71,0.08); }
+
+  input[type="text"] {
+    padding: 0.4rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    border-radius: 2px;
+    width: 200px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .toggle {
+    width: 36px; height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.3s;
+    border: none;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: var(--muted);
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: all 0.3s;
+  }
+  .toggle.on { background: rgba(232,197,71,0.2); }
+  .toggle.on::after { left: 19px; background: var(--accent); }
+
+  /* Grid */
+  .grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1px;
+    padding: 1px;
+    background: var(--border);
+    margin: 0;
+  }
+
+  .card-cell {
+    background: var(--card-bg);
+    padding: 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    position: relative;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    animation: fadeIn 0.3s ease both;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .card-cell:hover {
+    background: var(--surface);
+    z-index: 2;
+  }
+
+  .card-cell.empty {
+    opacity: 0.3;
+  }
+
+  .card-id {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 0.15rem;
+  }
+
+  .card-id .rank { color: var(--text); }
+  .card-id .suit-sym { font-size: 1rem; }
+  .suit-♠ .suit-sym { color: var(--spade); }
+  .suit-♥ .suit-sym { color: var(--heart); }
+  .suit-♣ .suit-sym { color: var(--club); }
+  .suit-♦ .suit-sym { color: var(--diamond); }
+
+  .card-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    color: var(--text);
+    font-style: italic;
+    line-height: 1.3;
+    flex: 1;
+  }
+
+  .card-name.missing {
+    color: var(--muted);
+    font-style: normal;
+    font-size: 0.7rem;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  .card-code {
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    padding-top: 0.4rem;
+    margin-top: auto;
+  }
+
+  /* Phonetics badge */
+  .phonetics {
+    position: absolute;
+    top: 0.8rem;
+    right: 0.8rem;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* Detail panel */
+  .panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    animation: fadeInOverlay 0.2s ease;
+  }
+
+  @keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .panel-overlay.hidden { display: none; }
+
+  .panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    max-width: 480px;
+    width: 100%;
+    padding: 2.5rem;
+    position: relative;
+    animation: slideUp 0.25s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+
+  .panel-close {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    transition: color 0.2s;
+  }
+  .panel-close:hover { color: var(--text); }
+
+  .panel-card-id {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.2rem;
+  }
+
+  .panel-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+  }
+
+  .panel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .panel-item label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .panel-item input, .panel-item select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.7rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .panel-item input:focus, .panel-item select:focus { border-color: var(--accent); }
+  .panel-item select option { background: var(--card-bg); }
+
+  .panel-story {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    min-height: 60px;
+    line-height: 1.6;
+  }
+
+  .panel-story.has-content { color: var(--text); }
+
+  .btn-save {
+    padding: 0.6rem 1.5rem;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: opacity 0.2s;
+  }
+  .btn-save:hover { opacity: 0.85; }
+
+  /* System info */
+  .system-info {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1px;
+  }
+
+  .system-block {
+    background: var(--surface);
+    padding: 1rem 1.5rem;
+  }
+
+  .system-block h3 {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 0.8rem;
+  }
+
+  .system-block .items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .system-block .item {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.7rem;
+  }
+
+  .system-block .item .key {
+    color: var(--accent);
+    min-width: 30px;
+    font-weight: 700;
+  }
+
+  .item .key.spade { color: var(--spade); }
+  .item .key.heart { color: var(--heart); }
+  .item .key.club { color: var(--club); }
+  .item .key.diamond { color: var(--diamond); }
+
+  /* Stats bar */
+  .stats {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 2rem;
+    padding: 0.8rem 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .stats span b { color: var(--accent); }
+
+  /* Quiz mode */
+  .quiz-card {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem;
+  }
+
+  .quiz-card.hidden { display: none; }
+
+  .quiz-display {
+    font-family: 'Playfair Display', serif;
+    font-size: 5rem;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .quiz-reveal {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-style: italic;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.4s;
+    min-height: 2rem;
+  }
+
+  .quiz-reveal.visible { opacity: 1; }
+
+  .quiz-btns {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .quiz-btn {
+    padding: 0.8rem 2rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .quiz-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .quiz-btn.reveal { border-color: var(--accent); color: var(--accent); }
+  .quiz-btn.correct { border-color: var(--club); color: var(--club); }
+  .quiz-btn.wrong { border-color: var(--heart); color: var(--heart); }
+  .quiz-btn.exit { border-color: var(--border); color: var(--muted); font-size: 0.65rem; }
+
+  .quiz-score {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+
+  .quiz-score b { color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Carte Mémoire</h1>
+  <p>Système PAO · Phonétique · 52 Cartes</p>
+  <div class="suits-legend">
+    <span><span style="color:var(--spade)">♠</span> Pique → P</span>
+    <span><span style="color:var(--heart)">♥</span> Cœur → C/K</span>
+    <span><span style="color:var(--club)">♣</span> Trèfle → T</span>
+    <span><span style="color:var(--diamond)">♦</span> Losange → L</span>
+  </div>
+</header>
+
+<div class="system-info">
+  <div class="system-block">
+    <h3>Encodage phonétique des rangs</h3>
+    <div class="items">
+      <div class="item"><span class="key">A</span><span>t, d (= 1)</span></div>
+      <div class="item"><span class="key">2</span><span>n</span></div>
+      <div class="item"><span class="key">3</span><span>m</span></div>
+      <div class="item"><span class="key">4</span><span>r</span></div>
+      <div class="item"><span class="key">5</span><span>l</span></div>
+      <div class="item"><span class="key">6</span><span>j, ch, k</span></div>
+      <div class="item"><span class="key">7</span><span>gu</span></div>
+    </div>
+  </div>
+  <div class="system-block">
+    <h3>&nbsp;</h3>
+    <div class="items">
+      <div class="item"><span class="key">8</span><span>f</span></div>
+      <div class="item"><span class="key">9</span><span>p</span></div>
+      <div class="item"><span class="key">10</span><span>t, d</span></div>
+      <div class="item"><span class="key">V</span><span>v</span></div>
+      <div class="item"><span class="key">D</span><span>q, k</span></div>
+      <div class="item"><span class="key">R</span><span>z, s</span></div>
+    </div>
+  </div>
+  <div class="system-block">
+    <h3>Couleur → initiale du nom</h3>
+    <div class="items">
+      <div class="item"><span class="key spade">♠</span><span>Pique → <b>P</b></span></div>
+      <div class="item"><span class="key heart">♥</span><span>Cœur → <b>C/K</b></span></div>
+      <div class="item"><span class="key club">♣</span><span>Trèfle → <b>T</b></span></div>
+      <div class="item"><span class="key diamond">♦</span><span>Losange → <b>L</b></span></div>
+    </div>
+  </div>
+  <div class="system-block">
+    <h3>Exemples décodés</h3>
+    <div class="items">
+      <div class="item"><span class="key" style="color:var(--diamond)">R♦</span><span>z + L → <i>Ali Baba</i></span></div>
+      <div class="item"><span class="key" style="color:var(--spade)">R♠</span><span>z + P → <i>Pumba</i></span></div>
+      <div class="item"><span class="key" style="color:var(--heart)">5♥</span><span>l + C → <i>K. Mbappé</i></span></div>
+      <div class="item"><span class="key" style="color:var(--club)">7♣</span><span>gu + T → <i>Tiger Lily</i></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="filter-btn active" data-suit="ALL" onclick="filterSuit('ALL', this)">Toutes</button>
+  <button class="filter-btn" data-suit="♠" onclick="filterSuit('♠', this)">♠ Pique</button>
+  <button class="filter-btn" data-suit="♥" onclick="filterSuit('♥', this)">♥ Cœur</button>
+  <button class="filter-btn" data-suit="♣" onclick="filterSuit('♣', this)">♣ Trèfle</button>
+  <button class="filter-btn" data-suit="♦" onclick="filterSuit('♦', this)">♦ Carreau</button>
+  <input type="text" id="search" placeholder="Chercher un nom..." oninput="filterSearch()" />
+  <div class="mode-toggle">
+    <span>Quiz</span>
+    <button class="toggle" id="quizToggle" onclick="startQuiz()"></button>
+  </div>
+</div>
+
+<div class="stats">
+  <span>Cartes remplies : <b id="statFilled">0</b>/52</span>
+  <span>Affichées : <b id="statShown">0</b></span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<!-- Detail panel -->
+<div class="panel-overlay hidden" id="panelOverlay" onclick="closePanelOnOverlay(event)">
+  <div class="panel" id="panel">
+    <button class="panel-close" onclick="closePanel()">✕</button>
+    <div class="panel-card-id" id="panelId"></div>
+    <div class="panel-name" id="panelNameDisplay"></div>
+    <div class="panel-grid">
+      <div class="panel-item">
+        <label>Personne / Personnage</label>
+        <input type="text" id="editName" placeholder="ex: Pumba" />
+      </div>
+      <div class="panel-item">
+        <label>Action</label>
+        <input type="text" id="editAction" placeholder="ex: mange" />
+      </div>
+      <div class="panel-item">
+        <label>Objet</label>
+        <input type="text" id="editObject" placeholder="ex: un rocher" />
+      </div>
+      <div class="panel-item">
+        <label>Note / Détail visuel</label>
+        <input type="text" id="editNote" placeholder="ex: dans la savane" />
+      </div>
+    </div>
+    <label style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);display:block;margin-bottom:0.4rem;">Histoire mentale</label>
+    <div class="panel-story" id="panelStory">Remplis les champs pour générer une histoire mentale forte.</div>
+    <br>
+    <button class="btn-save" onclick="saveCard()">Sauvegarder</button>
+  </div>
+</div>
+
+<!-- Quiz mode -->
+<div class="quiz-card hidden" id="quizPanel">
+  <div class="quiz-score" id="quizScore">Score : <b>0</b> / 0</div>
+  <div class="quiz-display" id="quizDisplay"></div>
+  <div class="quiz-reveal" id="quizReveal"></div>
+  <div class="quiz-btns" id="quizBtns">
+    <button class="quiz-btn reveal" onclick="revealQuiz()">Révéler</button>
+  </div>
+  <button class="quiz-btn exit" onclick="exitQuiz()">← Quitter le quiz</button>
+</div>
+
+<script>
+// ─── Data ──────────────────────────────────────────────────────────────────
+const RANKS = ['A','R','D','V','10','9','8','7','6','5','4','3','2'];
+const SUITS = ['♠','♥','♣','♦'];
+const RANK_SOUNDS = {
+  'A': 't, d', 'R': 'z, s', 'D': 'q, k', 'V': 'v',
+  '10': 't, d', '9': 'p', '8': 'f', '7': 'gu',
+  '6': 'j, ch, k', '5': 'l', '4': 'r', '3': 'm', '2': 'n'
+};
+const SUIT_COLORS = {'♠':'spade','♥':'heart','♣':'club','♦':'diamond'};
+
+// Pre-loaded data from the file
+const PRELOADED = {
+  // Rois (z/s)
+  'R♠':'Pumba','R♥':'Koby Brian','R♣':'TinkerBell','R♦':'Ali Baba',
+  // Dames (q/k)
+  'D♠':'Piccachu','D♥':'Coco Chanel','D♣':'Atticus Finch','D♦':'Loki',
+  // Valets (v)
+  'V♠':'Pavlov','V♥':'Kevin McAllister','V♣':'Travis Scott','V♦':'Leviathan',
+  // 10 (t/d)
+  '10♠':'Predator','10♥':'Keyzer Soze','10♣':'Thanos','10♦':'Lassie',
+  // 9 (p)
+  '9♦':'Al Pacino','9♥':'Capitaine Crochet','9♣':'Tortue Ninja','9♠':'Popeye',
+  // 8 (f)
+  '8♦':'Lefou','8♥':'Cafu','8♣':'Tifa','8♠':'Phantom',
+  // 7 (gu)
+  '7♦':'Legolas','7♥':'King Arthur','7♣':'Tiger Lily','7♠':'Pongo',
+  // 6 (j/ch/k)
+  '6♦':'Luigi','6♥':'Kimchi','6♣':'The Joker','6♠':'Jack Sparrow',
+  // 5 (l)
+  '5♦':'Lula','5♥':'Kylian Mbappé','5♣':'Tyler Durden','5♠':'Paul Pogba',
+  // 4 (r)
+  '4♦':'Ellen Ripley','4♥':'Carrie Bradshaw','4♣':'Terminator','4♠':'Parîs',
+  // 3 (m)
+  '3♦':'Liam Neeson','3♥':'Cameron Diaz','3♣':'Tom Cruise','3♠':'Pamela Anderson',
+  // 2 (n)
+  '2♦':'Leonardo Di Caprio','2♥':'Keanu Reeves','2♣':'Ethan Hunt','2♠':'Pinocchio',
+  // As
+  'A♦':'Elton John','A♥':'Cendrillon','A♣':'Tintin','A♠':'Peter Pan',
+};
+
+// Load from localStorage or use preloaded
+let db = {};
+try {
+  const saved = localStorage.getItem('carteMemoire_v2');
+  db = saved ? JSON.parse(saved) : {};
+} catch(e) {}
+
+// Merge preloaded into db (only if not already set by user)
+for (const [key, name] of Object.entries(PRELOADED)) {
+  if (!db[key]) db[key] = { name, action: '', object: '', note: '' };
+}
+
+function save() {
+  try { localStorage.setItem('carteMemoire_v2', JSON.stringify(db)); } catch(e) {}
+}
+
+// ─── Build card list ────────────────────────────────────────────────────────
+const ALL_CARDS = [];
+for (const suit of SUITS) {
+  for (const rank of RANKS) {
+    ALL_CARDS.push({ id: rank + suit, rank, suit });
+  }
+}
+
+// ─── Render ─────────────────────────────────────────────────────────────────
+let currentFilter = 'ALL';
+let searchTerm = '';
+
+function render() {
+  const grid = document.getElementById('grid');
+  const filtered = ALL_CARDS.filter(c => {
+    if (currentFilter !== 'ALL' && c.suit !== currentFilter) return false;
+    if (searchTerm) {
+      const d = db[c.id];
+      const name = d?.name || '';
+      return name.toLowerCase().includes(searchTerm) || c.id.toLowerCase().includes(searchTerm);
+    }
+    return true;
+  });
+
+  grid.innerHTML = '';
+  let delay = 0;
+  filtered.forEach(card => {
+    const d = db[card.id] || {};
+    const hasName = !!(d.name && d.name.trim());
+    const div = document.createElement('div');
+    div.className = `card-cell suit-${card.suit} ${hasName ? '' : 'empty'}`;
+    div.style.animationDelay = (delay * 15) + 'ms';
+    delay++;
+
+    const suitColor = SUIT_COLORS[card.suit];
+    const sound = RANK_SOUNDS[card.rank];
+
+    div.innerHTML = `
+      <div class="phonetics">${sound}</div>
+      <div class="card-id">
+        <span class="rank">${card.rank}</span>
+        <span class="suit-sym">${card.suit}</span>
+      </div>
+      <div class="card-name ${hasName ? '' : 'missing'}">${hasName ? d.name : '— vide —'}</div>
+      <div class="card-code">${card.id} · ${hasName && d.action ? d.action : '···'}</div>
+    `;
+    div.onclick = () => openPanel(card.id);
+    grid.appendChild(div);
+  });
+
+  const filled = ALL_CARDS.filter(c => db[c.id]?.name).length;
+  document.getElementById('statFilled').textContent = filled;
+  document.getElementById('statShown').textContent = filtered.length;
+}
+
+// ─── Filter ──────────────────────────────────────────────────────────────────
+function filterSuit(suit, btn) {
+  currentFilter = suit;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function filterSearch() {
+  searchTerm = document.getElementById('search').value.toLowerCase().trim();
+  render();
+}
+
+// ─── Panel ───────────────────────────────────────────────────────────────────
+let currentCard = null;
+
+function openPanel(id) {
+  currentCard = id;
+  const card = ALL_CARDS.find(c => c.id === id);
+  const d = db[id] || {};
+  const suitColor = SUIT_COLORS[card.suit];
+
+  const panelId = document.getElementById('panelId');
+  panelId.innerHTML = `<span style="color:var(--text)">${card.rank}</span><span style="color:var(--${suitColor}); font-size:2rem;">${card.suit}</span>`;
+
+  document.getElementById('panelNameDisplay').textContent = d.name || '—';
+  document.getElementById('editName').value = d.name || '';
+  document.getElementById('editAction').value = d.action || '';
+  document.getElementById('editObject').value = d.object || '';
+  document.getElementById('editNote').value = d.note || '';
+
+  updateStory();
+
+  document.getElementById('panelOverlay').classList.remove('hidden');
+}
+
+function updateStory() {
+  const name = document.getElementById('editName').value.trim();
+  const action = document.getElementById('editAction').value.trim();
+  const obj = document.getElementById('editObject').value.trim();
+  const note = document.getElementById('editNote').value.trim();
+
+  const el = document.getElementById('panelStory');
+  if (!name) {
+    el.textContent = 'Remplis les champs pour générer une histoire mentale forte.';
+    el.classList.remove('has-content');
+    return;
+  }
+  let story = `🎬 ${name}`;
+  if (action) story += ` ${action}`;
+  if (obj) story += ` ${obj}`;
+  if (note) story += ` — ${note}`;
+  story += '.';
+  el.textContent = story;
+  el.classList.add('has-content');
+  document.getElementById('panelNameDisplay').textContent = name || '—';
+}
+
+['editName','editAction','editObject','editNote'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateStory);
+});
+
+function saveCard() {
+  if (!currentCard) return;
+  db[currentCard] = {
+    name: document.getElementById('editName').value.trim(),
+    action: document.getElementById('editAction').value.trim(),
+    object: document.getElementById('editObject').value.trim(),
+    note: document.getElementById('editNote').value.trim(),
+  };
+  save();
+  render();
+  closePanel();
+}
+
+function closePanel() {
+  document.getElementById('panelOverlay').classList.add('hidden');
+  currentCard = null;
+}
+
+function closePanelOnOverlay(e) {
+  if (e.target === document.getElementById('panelOverlay')) closePanel();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePanel(); exitQuiz(); }
+});
+
+// ─── Quiz ────────────────────────────────────────────────────────────────────
+let quizCards = [];
+let quizIdx = 0;
+let quizCorrect = 0;
+let quizTotal = 0;
+let revealed = false;
+
+function startQuiz() {
+  const filled = ALL_CARDS.filter(c => db[c.id]?.name);
+  if (filled.length === 0) {
+    alert('Ajoute d\'abord des personnages !');
+    return;
+  }
+  quizCards = [...filled].sort(() => Math.random() - 0.5);
+  quizIdx = 0; quizCorrect = 0; quizTotal = 0;
+  document.getElementById('quizPanel').classList.remove('hidden');
+  showQuizCard();
+}
+
+function showQuizCard() {
+  if (quizIdx >= quizCards.length) {
+    document.getElementById('quizDisplay').textContent = '🎉';
+    document.getElementById('quizReveal').textContent = `Terminé ! ${quizCorrect}/${quizTotal} corrects`;
+    document.getElementById('quizReveal').classList.add('visible');
+    document.getElementById('quizBtns').innerHTML = `<button class="quiz-btn" onclick="startQuiz()">Recommencer</button>`;
+    return;
+  }
+  revealed = false;
+  const card = quizCards[quizIdx];
+  const sColor = SUIT_COLORS[card.suit];
+  document.getElementById('quizDisplay').innerHTML = `<span style="color:var(--text)">${card.rank}</span><span style="color:var(--${sColor})">${card.suit}</span>`;
+  document.getElementById('quizReveal').textContent = '';
+  document.getElementById('quizReveal').classList.remove('visible');
+  document.getElementById('quizBtns').innerHTML = `<button class="quiz-btn reveal" onclick="revealQuiz()">Révéler</button>`;
+  updateQuizScore();
+}
+
+function revealQuiz() {
+  if (revealed) return;
+  revealed = true;
+  const card = quizCards[quizIdx];
+  const d = db[card.id] || {};
+  let text = d.name || '?';
+  if (d.action) text += ` · ${d.action}`;
+  document.getElementById('quizReveal').textContent = text;
+  document.getElementById('quizReveal').classList.add('visible');
+  document.getElementById('quizBtns').innerHTML = `
+    <button class="quiz-btn correct" onclick="markQuiz(true)">✓ Connu</button>
+    <button class="quiz-btn wrong" onclick="markQuiz(false)">✕ Raté</button>
+  `;
+}
+
+function markQuiz(correct) {
+  quizTotal++;
+  if (correct) quizCorrect++;
+  quizIdx++;
+  showQuizCard();
+}
+
+function exitQuiz() {
+  document.getElementById('quizPanel').classList.add('hidden');
+  document.getElementById('quizToggle').classList.remove('on');
+}
+
+function updateQuizScore() {
+  document.getElementById('quizScore').innerHTML = `Score : <b>${quizCorrect}</b> / ${quizTotal} · Carte ${quizIdx+1}/${quizCards.length}`;
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
