@@ -237,15 +237,157 @@
     letter-spacing: 0.05em;
   }
 
-  .card-code {
+  .card-pao {
     font-size: 0.6rem;
     color: var(--muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    letter-spacing: 0.05em;
     border-top: 1px solid var(--border);
     padding-top: 0.4rem;
     margin-top: auto;
+    line-height: 1.4;
   }
+
+  .card-img-wrap {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--surface);
+    margin-bottom: 0.3rem;
+  }
+
+  .card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .card-img-loader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* Story mode */
+  .story-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem;
+  }
+  .story-panel.hidden { display: none; }
+
+  .story-slots {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .story-slot {
+    width: 160px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    position: relative;
+  }
+
+  .story-slot:hover { border-color: var(--accent); }
+  .story-slot.active { border-color: var(--accent); }
+
+  .story-slot-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .story-slot-card {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .story-slot-name {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+    font-style: italic;
+  }
+
+  .story-img {
+    width: 160px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 3px;
+    margin-top: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .story-sentence {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-style: italic;
+    text-align: center;
+    max-width: 600px;
+    line-height: 1.6;
+    min-height: 3rem;
+    color: var(--accent);
+  }
+
+  .story-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 4px;
+    max-height: 50vh;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 700px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.5rem;
+  }
+
+  .story-pick-btn {
+    padding: 0.4rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .story-pick-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .story-pick-btn.suit-♥ { color: var(--heart); }
+  .story-pick-btn.suit-♠ { color: var(--spade); }
+  .story-pick-btn.suit-♣ { color: var(--club); }
+  .story-pick-btn.suit-♦ { color: var(--diamond); }
 
   /* Phonetics badge */
   .phonetics {
@@ -550,10 +692,10 @@
     <div class="items">
       <div class="item"><span class="key">8</span><span>f</span></div>
       <div class="item"><span class="key">9</span><span>p</span></div>
-      <div class="item"><span class="key">10</span><span>t, d</span></div>
+      <div class="item"><span class="key">10</span><span>z, s</span></div>
       <div class="item"><span class="key">V</span><span>v</span></div>
       <div class="item"><span class="key">D</span><span>q, k</span></div>
-      <div class="item"><span class="key">R</span><span>z, s</span></div>
+      <div class="item"><span class="key">R</span><span>b</span></div>
     </div>
   </div>
   <div class="system-block">
@@ -583,7 +725,8 @@
   <button class="filter-btn" data-suit="♣" onclick="filterSuit('♣', this)">♣ Trèfle</button>
   <button class="filter-btn" data-suit="♦" onclick="filterSuit('♦', this)">♦ Carreau</button>
   <input type="text" id="search" placeholder="Chercher un nom..." oninput="filterSearch()" />
-  <div class="mode-toggle">
+  <button class="filter-btn" onclick="toggleImages(this)">🖼 Images ON</button>
+  <button class="filter-btn" onclick="openStory()">🎬 Mode Histoire</button>
     <span>Quiz</span>
     <button class="toggle" id="quizToggle" onclick="startQuiz()"></button>
   </div>
@@ -627,6 +770,30 @@
   </div>
 </div>
 
+<!-- Story Mode -->
+<div class="story-panel hidden" id="storyPanel">
+  <button class="quiz-btn exit" onclick="closeStory()" style="align-self:flex-end">← Fermer</button>
+  <div class="story-sentence" id="storySentence">Choisis 3 cartes pour créer une histoire</div>
+  <div class="story-slots">
+    <div class="story-slot active" id="slot0" onclick="selectSlot(0)">
+      <div class="story-slot-label">Personne</div>
+      <div class="story-slot-card" id="slotCard0">?</div>
+      <div class="story-slot-name" id="slotName0">—</div>
+    </div>
+    <div class="story-slot" id="slot1" onclick="selectSlot(1)">
+      <div class="story-slot-label">Action</div>
+      <div class="story-slot-card" id="slotCard1">?</div>
+      <div class="story-slot-name" id="slotName1">—</div>
+    </div>
+    <div class="story-slot" id="slot2" onclick="selectSlot(2)">
+      <div class="story-slot-label">Objet</div>
+      <div class="story-slot-card" id="slotCard2">?</div>
+      <div class="story-slot-name" id="slotName2">—</div>
+    </div>
+  </div>
+  <div class="story-picker" id="storyPicker"></div>
+</div>
+
 <!-- Quiz mode -->
 <div class="quiz-card hidden" id="quizPanel">
   <div class="quiz-score" id="quizScore">Score : <b>0</b> / 0</div>
@@ -643,40 +810,66 @@
 const RANKS = ['A','R','D','V','10','9','8','7','6','5','4','3','2'];
 const SUITS = ['♠','♥','♣','♦'];
 const RANK_SOUNDS = {
-  'A': 't, d', 'R': 'z, s', 'D': 'q, k', 'V': 'v',
-  '10': 't, d', '9': 'p', '8': 'f', '7': 'gu',
+  'A': 't, d', 'R': 'b', 'D': 'q, k', 'V': 'v',
+  '10': 'z, s', '9': 'p', '8': 'f', '7': 'gu',
   '6': 'j, ch, k', '5': 'l', '4': 'r', '3': 'm', '2': 'n'
 };
 const SUIT_COLORS = {'♠':'spade','♥':'heart','♣':'club','♦':'diamond'};
 
 // Pre-loaded data from the file
 const PRELOADED = {
-  // Rois (z/s)
-  'R♠':'Pumba','R♥':'Koby Brian','R♣':'TinkerBell','R♦':'Ali Baba',
-  // Dames (q/k)
-  'D♠':'Piccachu','D♥':'Coco Chanel','D♣':'Atticus Finch','D♦':'Loki',
-  // Valets (v)
-  'V♠':'Pavlov','V♥':'Kevin McAllister','V♣':'Travis Scott','V♦':'Leviathan',
-  // 10 (t/d)
-  '10♠':'Predator','10♥':'Keyzer Soze','10♣':'Thanos','10♦':'Lassie',
-  // 9 (p)
-  '9♦':'Al Pacino','9♥':'Capitaine Crochet','9♣':'Tortue Ninja','9♠':'Popeye',
-  // 8 (f)
-  '8♦':'Lefou','8♥':'Cafu','8♣':'Tifa','8♠':'Phantom',
-  // 7 (gu)
-  '7♦':'Legolas','7♥':'King Arthur','7♣':'Tiger Lily','7♠':'Pongo',
-  // 6 (j/ch/k)
-  '6♦':'Luigi','6♥':'Kimchi','6♣':'The Joker','6♠':'Jack Sparrow',
-  // 5 (l)
-  '5♦':'Lula','5♥':'Kylian Mbappé','5♣':'Tyler Durden','5♠':'Paul Pogba',
-  // 4 (r)
-  '4♦':'Ellen Ripley','4♥':'Carrie Bradshaw','4♣':'Terminator','4♠':'Parîs',
-  // 3 (m)
-  '3♦':'Liam Neeson','3♥':'Cameron Diaz','3♣':'Tom Cruise','3♠':'Pamela Anderson',
-  // 2 (n)
-  '2♦':'Leonardo Di Caprio','2♥':'Keanu Reeves','2♣':'Ethan Hunt','2♠':'Pinocchio',
-  // As
-  'A♦':'Elton John','A♥':'Cendrillon','A♣':'Tintin','A♠':'Peter Pan',
+  'R♠':{ name:'Pumba', action:'mange', object:'grosse limace' },
+  'R♥':{ name:'Koby Brian', action:'dribble', object:'ballon de basket' },
+  'R♣':{ name:'TinkerBell', action:'saupoudre', object:'fiole de poudre de fée' },
+  'R♦':{ name:'Ali Baba', action:'ouvre', object:'jarre d\'or' },
+  'D♠':{ name:'Piccachu', action:'lance', object:'éclair jaune' },
+  'D♥':{ name:'Coco Chanel', action:'vaporise', object:'flacon N°5' },
+  'D♣':{ name:'Atticus Finch', action:'plaide', object:'dossier judiciaire' },
+  'D♦':{ name:'Loki', action:'poignarde dans le dos', object:'couteau' },
+  'V♠':{ name:'Pavlov', action:'fait saliver', object:'clochette' },
+  'V♥':{ name:'Kevin McAllister', action:'piège avec', object:'fer à repasser' },
+  'V♣':{ name:'Travis Scott', action:'enflamme', object:'scène de concert' },
+  'V♦':{ name:'Leviathan', action:'engloutit', object:'navire entier' },
+  '10♠':{ name:'Predator', action:'arrache', object:'colonne vertébrale' },
+  '10♥':{ name:'Keyzer Soze', action:'disparaît avec', object:'briquet' },
+  '10♣':{ name:'Thanos', action:'claque des doigts avec', object:'gant de l\'infini' },
+  '10♦':{ name:'Lassie', action:'tire par la manche', object:'enfant tombé dans le puits' },
+  '9♠':{ name:'Popeye', action:'avale', object:'boîte d\'épinards' },
+  '9♥':{ name:'Capitaine Crochet', action:'transperce avec', object:'crochet en fer' },
+  '9♣':{ name:'Troupeau de moutons', action:'déferle sur', object:'clôture en bois' },
+  '9♦':{ name:'Al Pacino', action:'hurle en tenant', object:'liasse de billets' },
+  '8♠':{ name:'Pif', action:'reçoit', object:'poing géant' },
+  '8♥':{ name:'Cafu', action:'lève', object:'coupe du monde' },
+  '8♣':{ name:'Tifa', action:'fracasse', object:'tabouret de bar' },
+  '8♦':{ name:'Lefou', action:'lèche les bottes de', object:'botte de Gaston' },
+  '7♠':{ name:'Pongo', action:'court avec', object:'101 chiots' },
+  '7♥':{ name:'King Arthur', action:'retire', object:'Excalibur de la pierre' },
+  '7♣':{ name:'Tiger Lily', action:'lance', object:'tomahawk' },
+  '7♦':{ name:'Legolas', action:'décoche', object:'flèche en plein vol' },
+  '6♠':{ name:'Jack Sparrow', action:'boit', object:'bouteille de rhum' },
+  '6♥':{ name:'Kimchi', action:'fermente dans', object:'pot en terre cuite' },
+  '6♣':{ name:'The Joker', action:'fait exploser', object:'hôpital' },
+  '6♦':{ name:'Luigi', action:'saute sur', object:'champignon géant' },
+  '5♠':{ name:'Paul Pogba', action:'danse', object:'ballon de foot' },
+  '5♥':{ name:'Kylian Mbappé', action:'sprinte avec', object:'crampons' },
+  '5♣':{ name:'Tyler Durden', action:'fabrique', object:'pain de savon' },
+  '5♦':{ name:'Lula', action:'brandit', object:'poing levé' },
+  '4♠':{ name:'Parîs', action:'prend en photo', object:'tour Eiffel' },
+  '4♥':{ name:'Carrie Bradshaw', action:'écrit avec', object:'chaussure Manolo Blahnik' },
+  '4♣':{ name:'Terminator', action:'vise avec', object:'fusil à pompe' },
+  '4♦':{ name:'Ellen Ripley', action:'brûle', object:'nid d\'aliens' },
+  '3♠':{ name:'Pamela Anderson', action:'court sur', object:'plage en maillot rouge' },
+  '3♥':{ name:'Cameron Diaz', action:'s\'étale', object:'pot de gel' },
+  '3♣':{ name:'Tom Cruise', action:'court à toute vitesse vers', object:'bombe' },
+  '3♦':{ name:'Liam Neeson', action:'tranche avec', object:'sabre laser' },
+  '2♠':{ name:'Pinocchio', action:'ment en montrant', object:'nez qui s\'allonge' },
+  '2♥':{ name:'Keanu Reeves', action:'esquive en matrix', object:'balle au ralenti' },
+  '2♣':{ name:'Ethan Hunt', action:'se suspend à', object:'câble au plafond' },
+  '2♦':{ name:'Leonardo Di Caprio', action:'s\'accroche à', object:'planche du Titanic' },
+  'A♠':{ name:'Peter Pan', action:'vole au-dessus de', object:'Big Ben' },
+  'A♥':{ name:'Cendrillon', action:'s\'enfuit en laissant', object:'escarpin de verre' },
+  'A♣':{ name:'Tintin', action:'court avec', object:'Milou sous le bras' },
+  'A♦':{ name:'Elton John', action:'martèle', object:'piano à queue' },
 };
 
 // Load from localStorage or use preloaded
@@ -687,8 +880,8 @@ try {
 } catch(e) {}
 
 // Merge preloaded into db (only if not already set by user)
-for (const [key, name] of Object.entries(PRELOADED)) {
-  if (!db[key]) db[key] = { name, action: '', object: '', note: '' };
+for (const [key, val] of Object.entries(PRELOADED)) {
+  if (!db[key]) db[key] = typeof val === 'string' ? { name: val, action: '', object: '', note: '' } : { action: '', object: '', note: '', ...val };
 }
 
 function save() {
@@ -703,9 +896,18 @@ for (const suit of SUITS) {
   }
 }
 
+// ─── Image Pollinations ──────────────────────────────────────────────────────
+function getImageUrl(d) {
+  if (!d?.name) return null;
+  const scene = [d.name, d.action, d.object].filter(Boolean).join(' ');
+  const prompt = 'cinematic cartoon illustration, ' + scene + ', vivid colors, dramatic lighting, no text, no watermark';
+  return 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + '?width=300&height=180&nologo=true&seed=' + d.name.length;
+}
+
 // ─── Render ─────────────────────────────────────────────────────────────────
 let currentFilter = 'ALL';
 let searchTerm = '';
+let showImages = true;
 
 function render() {
   const grid = document.getElementById('grid');
@@ -729,18 +931,30 @@ function render() {
     div.style.animationDelay = (delay * 15) + 'ms';
     delay++;
 
-    const suitColor = SUIT_COLORS[card.suit];
     const sound = RANK_SOUNDS[card.rank];
+    const imgUrl = showImages && hasName ? getImageUrl(d) : null;
 
     div.innerHTML = `
       <div class="phonetics">${sound}</div>
+      ${imgUrl ? `<div class="card-img-wrap">
+        <div class="card-img-loader">⏳</div>
+        <img class="card-img" src="${imgUrl}" alt="${d.name}" loading="lazy" />
+      </div>` : ''}
       <div class="card-id">
         <span class="rank">${card.rank}</span>
         <span class="suit-sym">${card.suit}</span>
       </div>
       <div class="card-name ${hasName ? '' : 'missing'}">${hasName ? d.name : '— vide —'}</div>
-      <div class="card-code">${card.id} · ${hasName && d.action ? d.action : '···'}</div>
+      <div class="card-pao">${hasName ? (d.action || '···') + ' · ' + (d.object || '···') : ''}</div>
     `;
+
+    if (imgUrl) {
+      const img = div.querySelector('.card-img');
+      const loader = div.querySelector('.card-img-loader');
+      img.onload = () => { loader.style.display = 'none'; img.style.opacity = '1'; };
+      img.onerror = () => { div.querySelector('.card-img-wrap').style.display = 'none'; };
+    }
+
     div.onclick = () => openPanel(card.id);
     grid.appendChild(div);
   });
@@ -748,6 +962,85 @@ function render() {
   const filled = ALL_CARDS.filter(c => db[c.id]?.name).length;
   document.getElementById('statFilled').textContent = filled;
   document.getElementById('statShown').textContent = filtered.length;
+}
+
+// ─── Image toggle ─────────────────────────────────────────────────────────────
+function toggleImages(btn) {
+  showImages = !showImages;
+  btn.textContent = showImages ? '🖼 Images ON' : '🖼 Images OFF';
+  render();
+}
+
+// ─── Story Mode ───────────────────────────────────────────────────────────────
+let storySlots = [null, null, null];
+let activeSlot = 0;
+
+function openStory() {
+  document.getElementById('storyPanel').classList.remove('hidden');
+  buildPicker();
+  updateStoryPanel();
+}
+
+function closeStory() {
+  document.getElementById('storyPanel').classList.add('hidden');
+}
+
+function buildPicker() {
+  const picker = document.getElementById('storyPicker');
+  picker.innerHTML = '';
+  ALL_CARDS.forEach(card => {
+    const d = db[card.id] || {};
+    if (!d.name) return;
+    const btn = document.createElement('button');
+    btn.className = `story-pick-btn suit-${card.suit}`;
+    btn.innerHTML = `<div>${card.rank}${card.suit}</div><div style="color:var(--muted);font-size:0.55rem">${d.name.split(' ')[0]}</div>`;
+    btn.onclick = () => assignSlot(card.id);
+    picker.appendChild(btn);
+  });
+}
+
+function selectSlot(idx) {
+  activeSlot = idx;
+  document.querySelectorAll('.story-slot').forEach((s, i) => s.classList.toggle('active', i === idx));
+}
+
+function assignSlot(cardId) {
+  storySlots[activeSlot] = cardId;
+  // auto advance
+  if (activeSlot < 2) selectSlot(activeSlot + 1);
+  updateStoryPanel();
+}
+
+function updateStoryPanel() {
+  const labels = ['slotCard', 'slotName'];
+  const SUIT_C = {'♠':'var(--spade)','♥':'var(--heart)','♣':'var(--club)','♦':'var(--diamond)'};
+
+  storySlots.forEach((cardId, i) => {
+    const cardEl = document.getElementById('slotCard' + i);
+    const nameEl = document.getElementById('slotName' + i);
+    if (!cardId) {
+      cardEl.textContent = '?';
+      cardEl.style.color = 'var(--muted)';
+      nameEl.textContent = '—';
+      return;
+    }
+    const card = ALL_CARDS.find(c => c.id === cardId);
+    const d = db[cardId] || {};
+    cardEl.innerHTML = `<span style="color:var(--text)">${card.rank}</span><span style="color:${SUIT_C[card.suit]}">${card.suit}</span>`;
+    const parts = [d.name, d.action, d.object];
+    nameEl.textContent = [d.name, d.action, d.object][i] || d.name;
+  });
+
+  // Build sentence
+  const [c0, c1, c2] = storySlots;
+  if (c0 && c1 && c2) {
+    const p = db[c0]?.name || '?';
+    const a = db[c1]?.action || '?';
+    const o = db[c2]?.object || '?';
+    document.getElementById('storySentence').textContent = `🎬 ${p} ${a} ${o}`;
+  } else {
+    document.getElementById('storySentence').textContent = 'Choisis 3 cartes pour créer une histoire';
+  }
 }
 
 // ─── Filter ──────────────────────────────────────────────────────────────────
